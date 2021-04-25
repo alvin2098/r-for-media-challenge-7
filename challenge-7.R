@@ -1,3 +1,5 @@
+### --- R Challange 7, Alvin Aziz, 25.04.2021 --- ###
+
 # # B. Kießling
 # Challenge 7: plotly und leaflet
 # Zur Überprüfung dienen erneut die beiden Outputs (plot und map)
@@ -29,16 +31,44 @@
 # Wir werden die Map in der nächsten Einheit weiter gestalten!
 
 # load packages
+library(dplyr)
 library(plotly)
 library(leaflet)
 library(tidyverse)
 library(sf)
 
 # load data for plot
+stadtteile <- 
+  readRDS("data/stadtteile_profil_updated.rds") %>% 
+  transform(arbeitslosenanteil_in_percent_dez_2019 = as.numeric(arbeitslosenanteil_in_percent_dez_2019)) %>% 
+  mutate_at(vars(anteil_der_bevolkerung_mit_migrations_hintergrund_in_percent, arbeitslosenanteil_in_percent_dez_2019), 
+            funs(round(., 1)))
 
 # plotly
+plotobject <-
+  plot_ly(data = stadtteile, 
+        x = ~anteil_der_bevolkerung_mit_migrations_hintergrund_in_percent, 
+        y = ~arbeitslosenanteil_in_percent_dez_2019, 
+        type ="scatter", 
+        mode = "markers",
+        hoverinfo = "text",
+        text = ~paste('<br>Migrationsanteil: ', anteil_der_bevolkerung_mit_migrations_hintergrund_in_percent,
+                      '<br>Arbeitslosenanteil: ', arbeitslosenanteil_in_percent_dez_2019, 
+                      '<br>Stedtteil: ', stadtteil),
+        showlegend = FALSE) %>%
+  layout(title = "Verhältnis von Arbeitslosen und Menschen mit Migrationshintergrund in Hamburg",
+         xaxis = list(title = "Anteil Migrationshintergrund in %"),
+         yaxis = list(title = "Arbeitslosenanteil in %"))
+
+htmlwidgets::saveWidget(as_widget(plotobject), "myfirstplot.html")
+
+### --- Interpretation --- ###
+# Je höher der Anteil der Menschen mit Migrationshintergrund ist, desto höher ist der Arbeitslosenanteil.
 
 # load data for map
+stadtteile_gps <- 
+  readRDS("data/stadtteile_wsg84.RDS") %>% 
+  rename(stadtteil = Stadtteil, bezirk = Bezirk)
 
 # join data
 stadtteile <- stadtteile %>% 
@@ -49,15 +79,23 @@ stadtteile <- stadtteile %>%
 bins <- c(0, 2, 4, 6, 8, 10, Inf)
 pal <- colorBin("YlOrRd", domain = stadtteile$arbeitslosenanteil_in_percent_dez_2019, bins = bins)
 
-leaflet() %>% 
-  addProviderTiles() %>% 
-  setView() %>% 
-  addPolygons(data = ,
+unemploymentMapHH <- 
+  leaflet() %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  setView(lng = 9.993682, lat = 53.551086, zoom = 10) %>% 
+  addPolygons(data = stadtteile,
               fillColor = ~pal(arbeitslosenanteil_in_percent_dez_2019),
-              weight = ,
-              opacity = ,
-              color = ,
-              fillOpacity = )
+              weight = 1,
+              opacity = 0.1,
+              color = "white",
+              fillOpacity = 0.5,
+              highlight = highlightOptions(
+                weight = 1, 
+                color= "#666",
+                fillOpacity = 0.7,
+                bringToFront = TRUE),
+              label=~stadtteile$stadtteil)
 
+htmlwidgets::saveWidget(as_widget(unemploymentMapHH), "myfirstmap.html")
 
 
